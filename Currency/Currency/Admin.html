@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <script src="Scripts/angular.js"></script>
+    <link href="Content/bootstrap.css" rel="stylesheet" />
+    <script src="Scripts/jquery-3.0.0.js"></script>
+    <script src="Scripts/jquery.signalR-2.4.1.js"></script>
+    <script src="signalr/hubs"></script>
+    <style>
+        .disabled {
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body ng-app="ParaApplication" background="https://wallpaperplay.com/walls/full/f/8/e/376491.jpg">
+    <div ng-controller="Home" class="container">
+        <table class="table table-dark table-striped text-center shadow-lg">
+            <thead>
+                <tr>
+                    <td>Name</td>
+                    <td>Value</td>
+                    <td>Last Value</td>
+                    <td>Change</td>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="item in Money">
+                    <td>{{item.Name}}</td>
+                    <td><input ng-model="item.Value" ng-focus="SetCurrentValue(item)" ng-blur="UpdateValue(item)" /></td>
+                    <td>{{item.LastValue}}</td>
+                    <td>{{item.Change | number:2}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+
+<script>
+    var app = angular.module("ParaApplication", []);
+    app.controller("Home", function ($scope) {
+        var hub = $.connection.moneyHub;
+        $scope.Current = null;
+        $.connection.hub.start().done(function () {
+            hub.server.getAll().done(function (init) {
+                $scope.Money = init;
+                $scope.$apply();
+                console.log(init);
+            })
+        })
+
+        $scope.UpdateValue = function (money) {
+            if ($scope.Current != money.Value) {
+                hub.server.pressValueToAllClients(money.ID, money.Value)
+                money.LastValue = $scope.Current;
+                money.Change = (money.Value - money.LastValue) * (100 / money.LastValue);
+            }
+        }
+
+        $scope.SetCurrentValue = function (money) {
+            $scope.Current = money.Value;
+        }
+
+        hub.client.newValue = function (money) {
+            for (var i = 0; i < $scope.Money.length; i++) {
+                if ($scope.Money[i].ID == money.ID) {
+                    $scope.Money[i] = money;
+                    $scope.$apply();
+                }
+            }
+        }
+
+    })
+</script>
